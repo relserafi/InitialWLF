@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weight Loss Smart Form</title>
+
+  <!-- ✅ Link to your custom CSS -->
+  <link rel="stylesheet" href="/static/css/styles.css" />
+
+  <!-- ✅ PayPal SDK -->
+  <script src="https://www.paypal.com/sdk/js?client-id=AQTRxv5Gb3Cc2GwaQ80lSfmT-a9mvmg2-rV3d3x7PeTxBlotGoS1hr0CmsR_eB5qr4jUYnI1lz2itIuD&currency=USD" defer></script>
+
+  <!-- ✅ Link to your custom JavaScript (deferred so it runs after DOM loads) -->
+  <script src="/static/js/form-logic.js" defer></script>
+</head>
+<body>
+  <header class="questionnaire-container">
+    <div class="card">
+      <div class="card-header">
+        <h1 class="card-title">Weight Loss Medication Questionnaire</h1>
+        <p class="card-description">Complete this form to see if you qualify for weight loss medication.</p>
+      </div>
+    </div>
+  </header>
+
+  <main id="form-container" class="questionnaire-container"></main>
+
+  <div class="questionnaire-container">
+    <div class="button-container">
+      <button id="prev-btn" class="button button-secondary" style="display: none;">
+        Back
+      </button>
+      <button id="next-btn" class="button button-primary" style="display: none;">
+        Next
+      </button>
+    </div>
+
+    <div id="paypal-button-container" class="paypal-button-container"></div>
+
+    <p id="status" class="important-note" style="display: none;"></p>
+  </div>
+
+  <script>
+    const MEDICATION_PRICES = {
+      semaglutide: 299,
+      tirzepatide: 499,
+      quickstrips: 120,
+      drops: 100
+    };
+
+    const medicalHistoryLanding = {
+      id: 'medicalHistoryIntro',
+      title: 'Before we continue, we will ask you questions about your medical history. These questions are important to ensure the safety of your treatment.',
+      type: 'landing'
+    };
+
+    const eligibilityLanding = {
+      id: 'eligibilityConfirm',
+      title: 'Thank you. Based on your responses, you appear to be eligible to proceed with treatment.',
+      type: 'landing'
+    };
+
+    const confirmationPage = {
+      id: 'confirmationPage',
+      title: '✅ Your submission is complete. We have received your information and payment. Please check your email for confirmation and next steps.',
+      type: 'landing'
+    };
+
+    const ozempicSchedule = {
+      id: 'ozempicSchedule',
+      title: 'Titration Schedule: Ozempic/Wegovy (Semaglutide)',
+      type: 'landing'
+    };
+
+    const mounjaroSchedule = {
+      id: 'mounjaroSchedule',
+      title: 'Titration Schedule: Mounjaro (Tirzepatide)',
+      type: 'landing'
+    };
+
+    const quickStripsSchedule = {
+      id: 'quickStripsSchedule',
+      title: 'Titration Schedule: Semaglutide QuickStrips',
+      type: 'landing'
+    };
+
+    const dropsSchedule = {
+      id: 'dropsSchedule',
+      title: 'Titration Schedule: Semaglutide Sublingual Drops',
+      type: 'landing'
+    };
+
+    const questions = [
+      { id: 'personalInfo', title: 'What is your full name?', type: 'nameFields' },
+      { id: 'addressInfo', title: 'What is your full address?', type: 'addressFields' },
+      { id: 'email', title: 'What is your email address?', type: 'email' },
+      { id: 'phone', title: 'What is your phone number?', type: 'tel' },
+      { id: 'gender', title: 'What gender were you assigned at birth?', type: 'radio', options: [
+        { value: 'male', label: 'Male' },
+        { value: 'female', label: 'Female' }
+      ]},
+      { id: 'idUpload', title: 'Please upload a picture of your government issued ID', type: 'fileUpload' },
+      medicalHistoryLanding,
+      { id: 'medicationAllergies', title: 'Do you have any allergies to medications?', type: 'radio', options: [
+        { value: 'yes', label: 'Yes' },
+        { value: 'no', label: 'No' }
+      ]},
+      { id: 'specifyAllergies', title: 'Please specify which medications you are allergic to:', type: 'textarea' },
+      { id: 'tirzepatideAllergy', title: 'Have you ever had an adverse or allergic reaction to Tirzepatide or Semaglutide?', type: 'radio', options: [
+        { value: 'yes', label: 'Yes' },
+        { value: 'no', label: 'No' }
+      ]},
+      { id: 'glp1ReceptorAllergy', title: 'Have you ever had an adverse or allergic reaction to another GLP-1 receptor agonist?', type: 'radio', options: [
+        { value: 'yes', label: 'Yes' },
+        { value: 'no', label: 'No' }
+      ]},
+      { id: 'medicalConditions', title: 'Do you have any of the following medical conditions?', type: 'multiCheckbox', checkboxOptions: [
+        { id: 'type1DM', label: 'Type 1 Diabetes' },
+        { id: 'thyroid', label: 'Thyroid Cancer' },
+        { id: 'none', label: 'None of the above' }
+      ]},
+      { id: 'pregnancy', title: 'Are you currently pregnant, trying to get pregnant, or breastfeeding?', type: 'radio', options: [
+        { value: 'yes', label: 'Yes' },
+        { value: 'no', label: 'No' }
+      ]},
+      { id: 'depression', title: 'Are you currently experiencing depression with suicidal thoughts?', type: 'radio', options: [
+        { value: 'yes', label: 'Yes' },
+        { value: 'no', label: 'No' }
+      ]},
+      { id: 'alcoholConsumption', title: 'Do you currently consume alcohol?', type: 'radio', options: [
+        { value: 'yes', label: 'Yes' },
+        { value: 'no', label: 'No' }
+      ]},
+      { id: 'menOrMtc', title: 'Do you have a personal or family history of MEN or Medullary Thyroid Carcinoma?', type: 'radio', options: [
+        { value: 'yes', label: 'Yes' },
+        { value: 'no', label: 'No' }
+      ]},
+      { id: 'chemotherapy', title: 'Are you currently receiving Chemotherapy?', type: 'radio', options: [
+        { value: 'yes', label: 'Yes' },
+        { value: 'no', label: 'No' }
+      ]},
+      { id: 'medications', title: 'Are you taking any of these medications?', type: 'multiCheckbox', checkboxOptions: [
+        { id: 'abirateroneAcetate', label: 'Abiraterone acetate' },
+        { id: 'none', label: 'None of the above' }
+      ]},
+      { id: 'weightLossMedications', title: 'Are you currently taking any prescription medications for weight loss?', type: 'radio', options: [
+        { value: 'yes', label: 'Yes' },
+        { value: 'no', label: 'No' }
+      ]},
+      { id: 'weightLossMedicationsList', title: 'Please list all weight loss medications you are currently taking:', type: 'textarea' },
+      { id: 'otherMedications', title: 'Are you taking any other medications?', type: 'radio', options: [
+        { value: 'yes', label: 'Yes' },
+        { value: 'no', label: 'No' }
+      ]},
+      { id: 'otherMedicationsList', title: 'Please list all other medications you are currently taking:', type: 'textarea' },
+      { id: 'bloodPressure', title: 'Recent blood pressure (within last 6 months):', type: 'text' },
+      { id: 'weight', title: 'Weight in pounds (lbs):', type: 'text' },
+      { id: 'height', title: 'Height in inches:', type: 'text' },
+      eligibilityLanding,
+      { id: 'medicationForm', title: 'Which dosage form would you prefer?', type: 'radio', options: [
+        { value: 'injectable', label: 'Injectable medications' },
+        { value: 'sublingual', label: 'Sublingual Medications' }
+      ]},
+      { id: 'activeIngredient', title: 'Which active ingredient would you prefer?', type: 'radio', options: [
+        { value: 'semaglutide', label: 'Ozempic/Wegovy (Semaglutide) - $299' },
+        { value: 'tirzepatide', label: 'Mounjaro (Tirzepatide) - $499' }
+      ]},
+      { id: 'sublingual_form', title: 'Which Sublingual Form?', type: 'radio', options: [
+        { value: 'quickstrips', label: 'QuickStrips - $120' },
+        { value: 'drops', label: 'Drops - $100' }
+      ]},
+      ozempicSchedule,
+      mounjaroSchedule,
+      quickStripsSchedule,
+      dropsSchedule,
+      confirmationPage
+    ];
+
+    let currentQuestionIndex = 0;
+    const answers = {};
+    const formContainer = document.getElementById("form-container");
+    const nextBtn = document.getElementById("next-btn");
+    const prevBtn = document.getElementById("prev-btn");
+    const status = document.getElementById("status");
+
+    function calculateBMI(weight, height) {
+      const w = parseFloat(weight);
+      const h = parseFloat(height);
+      if (!w || !h) return 0;
+      return (w / (h * h)) * 703;
+    }
+
+    function renderQuestion() {
+      const q = questions[currentQuestionIndex];
+
+      if (q.id === 'pregnancy' && answers['gender'] === 'male') {
+        currentQuestionIndex++;
+        renderQuestion();
+        return;
+      }
+
+      formContainer.innerHTML = `<div class="card"><div class="card-header"><h3 class="card-title">${q.title}</h3></div>`;
+      document.getElementById("paypal-button-container").innerHTML = "";
+
+      // Show or hide back button based on position
+      if (currentQuestionIndex > 0) {
+        prevBtn.style.display = "inline-block";
+      } else {
+        prevBtn.style.display = "none";
+      }
+
+      if (q.type === 'landing') {
+        formContainer.innerHTML += `<div class="card-content"><p>${q.title}</p></div></div>`;
+        nextBtn.style.display = "inline-block";
+        return;
+      }
+
+      formContainer.innerHTML += `<div class="card-content">`;
+      nextBtn.style.display = "inline-block";
+
+      if (q.type === 'text' || q.type === 'email' || q.type === 'tel') {
+        formContainer.innerHTML += `<div class="form-item"><input type="${q.type}" id="${q.id}" class="form-input" value="${answers[q.id] || ''}" /></div>`;
+      } else if (q.type === 'nameFields') {
+        formContainer.innerHTML += `
+          <div class="name-fields">
+            <div class="field-group">
+              <label class="form-label">First Name</label>
+              <input type="text" id="firstName" class="form-input" value="${answers.personalInfo?.firstName || ''}" />
+            </div>
+            <div class="field-group">
+              <label class="form-label">Last Name</label>
+              <input type="text" id="lastName" class="form-input" value="${answers.personalInfo?.lastName || ''}" />
+            </div>
+          </div>
+        `;
+      } else if (q.type === 'addressFields') {
+        formContainer.innerHTML += `
+          <div class="address-fields">
+            <div class="field-group">
+              <label class="form-label">Street Address</label>
+              <input type="text" id="streetAddress" class="form-input" value="${answers.addressInfo?.streetAddress || ''}" />
+            </div>
+            <div class="field-row">
+              <div class="field-group">
+                <label class="form-label">City</label>
+                <input type="text" id="city" class="form-input" value="${answers.addressInfo?.city || ''}" />
+              </div>
+              <div class="field-group">
+                <label class="form-label">State</label>
+                <input type="text" id="state" class="form-input" value="${answers.addressInfo?.state || ''}" />
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field-group">
+                <label class="form-label">ZIP Code</label>
+                <input type="text" id="zipCode" class="form-input" value="${answers.addressInfo?.zipCode || ''}" />
+              </div>
+              <div class="field-group">
+                <label class="form-label">Country</label>
+                <input type="text" id="country" class="form-input" value="${answers.addressInfo?.country || 'United States'}" />
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (q.type === 'radio') {
+        formContainer.innerHTML += `<div class="radio-group">`;
+        q.options.forEach(opt => {
+          const isChecked = answers[q.id] === opt.value ? 'checked' : '';
+          formContainer.innerHTML += `<label class="radio-item"><input type="radio" name="${q.id}" value="${opt.value}" class="radio-input" ${isChecked} /><span class="radio-label">${opt.label}</span></label>`;
+        });
+        formContainer.innerHTML += `</div>`;
+      } else if (q.type === 'multiCheckbox') {
+        formContainer.innerHTML += `<div class="multi-checkbox">`;
+        q.checkboxOptions.forEach(opt => {
+          const isChecked = answers[q.id] && answers[q.id].includes(opt.id) ? 'checked' : '';
+          formContainer.innerHTML += `<label class="checkbox-item"><input type="checkbox" name="${q.id}" value="${opt.id}" class="checkbox-input" ${isChecked} /><span class="checkbox-label">${opt.label}</span></label>`;
+        });
+        formContainer.innerHTML += `</div>`;
+      } else if (q.type === 'textarea') {
+        formContainer.innerHTML += `<div class="form-item"><textarea id="${q.id}" class="form-textarea">${answers[q.id] || ''}</textarea></div>`;
+      } else if (q.type === 'fileUpload') {
+        formContainer.innerHTML += `<div class="form-item"><input type="file" id="${q.id}" class="form-input" /></div>`;
+      }
+      
+      formContainer.innerHTML += `</div></div>`;
+    }
+
+    function collectAnswer() {
+      const q = questions[currentQuestionIndex];
+      if (q.type === 'text' || q.type === 'email' || q.type === 'tel' || q.type === 'textarea') {
+        answers[q.id] = document.getElementById(q.id).value;
+      } else if (q.type === 'nameFields') {
+        answers.personalInfo = {
+          firstName: document.getElementById('firstName').value,
+          lastName: document.getElementById('lastName').value
+        };
+      } else if (q.type === 'addressFields') {
+        answers.addressInfo = {
+          streetAddress: document.getElementById('streetAddress').value,
+          city: document.getElementById('city').value,
+          state: document.getElementById('state').value,
+          zipCode: document.getElementById('zipCode').value,
+          country: document.getElementById('country').value
+        };
+      } else if (q.type === 'radio') {
+        const selected = document.querySelector(`input[name="${q.id}"]:checked`);
+        answers[q.id] = selected ? selected.value : '';
+      } else if (q.type === 'multiCheckbox') {
+        const checked = document.querySelectorAll(`input[name="${q.id}"]:checked`);
+        answers[q.id] = Array.from(checked).map(input => input.value);
+        if ((q.id === 'medicalConditions' || q.id === 'medications') && !answers[q.id].includes('none') && answers[q.id].length > 0) {
+          status.textContent = '❌ Based on your selected history or medications, you are not eligible.';
+          status.style.display = 'block';
+          formContainer.innerHTML = '';
+          nextBtn.style.display = 'none';
+          prevBtn.style.display = 'none';
+          return false;
+        }
+      } else if (q.type === 'fileUpload') {
+        const fileInput = document.getElementById(q.id);
+        if (fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            answers[q.id] = reader.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+
+      if (q.id === 'height') {
+        const bmi = calculateBMI(answers['weight'], answers['height']);
+        answers['bmi'] = bmi.toFixed(1);
+        if (bmi < 25) {
+          status.textContent = `❌ Your BMI is ${bmi.toFixed(1)}. You are not eligible for weight loss treatment.`;
+          status.style.display = 'block';
+          formContainer.innerHTML = '';
+          nextBtn.style.display = 'none';
+          prevBtn.style.display = 'none';
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    // Handle Next button click
+    nextBtn.addEventListener("click", () => {
+      const valid = collectAnswer();
+      if (!valid) return;
+
+      const currentQ = questions[currentQuestionIndex];
+
+      if (currentQ.id === 'activeIngredient') {
+        if (answers['activeIngredient'] === 'semaglutide') {
+          currentQuestionIndex = questions.findIndex(q => q.id === 'ozempicSchedule');
+        } else if (answers['activeIngredient'] === 'tirzepatide') {
+          currentQuestionIndex = questions.findIndex(q => q.id === 'mounjaroSchedule');
+        } else {
+          currentQuestionIndex++;
+        }
+        renderQuestion();
+        return;
+      }
+
+      if (currentQ.id === 'sublingual_form') {
+        if (answers['sublingual_form'] === 'quickstrips') {
+          currentQuestionIndex = questions.findIndex(q => q.id === 'quickStripsSchedule');
+        } else if (answers['sublingual_form'] === 'drops') {
+          currentQuestionIndex = questions.findIndex(q => q.id === 'dropsSchedule');
+        } else {
+          currentQuestionIndex++;
+        }
+        renderQuestion();
+        return;
+      }
+
+      currentQuestionIndex++;
+
+      if (currentQuestionIndex < questions.length) {
+        renderQuestion();
+      } else {
+        formContainer.innerHTML = '<div class="card"><div class="card-header"><h3 class="card-title">Almost done!</h3></div><div class="card-content"><p>Please complete your payment to continue.</p></div></div>';
+        nextBtn.style.display = 'none';
+        prevBtn.style.display = 'none';
+
+        paypal.Buttons({
+          createOrder: function(data, actions) {
+            const price = MEDICATION_PRICES[answers['activeIngredient']] || MEDICATION_PRICES[answers['sublingual_form']] || 299;
+            return actions.order.create({
+              purchase_units: [{ amount: { value: price.toFixed(2) } }]
+            });
+          },
+          onApprove: function(data, actions) {
+            return actions.order.capture().then(function(details) {
+              fetch("/submit-form", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...answers, paymentID: details.id })
+              })
+              .then(res => res.json())
+              .then(data => {
+                if (data.success) {
+                  currentQuestionIndex = questions.findIndex(q => q.id === 'confirmationPage');
+                  renderQuestion();
+                } else {
+                  status.textContent = "❌ Submission failed.";
+                  status.style.display = 'block';
+                }
+              })
+              .catch(err => {
+                console.error(err);
+                status.textContent = "⚠️ Network error.";
+                status.style.display = 'block';
+              });
+            });
+          }
+        }).render('#paypal-button-container');
+      }
+    });
+
+    // Handle Previous button click
+    prevBtn.addEventListener("click", () => {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        
+        // Skip pregnancy question when going back for males
+        if (questions[currentQuestionIndex].id === 'pregnancy' && answers['gender'] === 'male') {
+          currentQuestionIndex--;
+        }
+        
+        renderQuestion();
+      }
+    });
+
+    // Add this CSS for the button container
+    const style = document.createElement('style');
+    style.textContent = `
+      .button-container {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+      }
+      
+      @media (max-width: 640px) {
+        .button-container {
+          flex-direction: column-reverse;
+          gap: 0.75rem;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    renderQuestion();
+  </script>
+</body>
+</html>

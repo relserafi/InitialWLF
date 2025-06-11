@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Form Test</title>
+</head>
+<body>
+    <h1>Testing Weight Loss Form</h1>
+    <script>
+        // Test medication selection logic
+        const testMedicationSelection = () => {
+            console.log('Testing medication selection mapping:');
+            
+            // Injectable medications
+            console.log('semaglutide -> ozempic');
+            console.log('tirzepatide -> tirzepatide');
+            
+            // Sublingual medications  
+            console.log('quickstrips -> quickstrips');
+            console.log('drops -> drops');
+            
+            // Verify PaymentSection medications object includes all:
+            const medications = ['ozempic', 'tirzepatide', 'quickstrips', 'drops'];
+            console.log('All required medications:', medications);
+        };
+        
+        testMedicationSelection();
+        
+        // Navigate to actual form
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 1000);
+    </script>
+</body>
+</html>

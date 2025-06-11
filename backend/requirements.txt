@@ -1,0 +1,6 @@
+flask
+flask-cors
+flask-mail
+python-dotenv
+fpdf2
+requests
