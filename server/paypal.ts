@@ -19,8 +19,8 @@ import { Request, Response } from "express";
 /* PayPal Controllers Setup */
 
 // Force use of your exact live credentials
-const PAYPAL_CLIENT_ID = "ATBmRhZHlN9iR4ty9Z0cs2K5zVMF32recqjAFa3eLjfJF7IZqL3ATNprpS6bVpIWGR9RT00s7Ymspp6T";
-const PAYPAL_CLIENT_SECRET = "EI6wWFV5FsjwVEfjHrK7U6GU9gqoPiDXIGs8e_4NWJEbmqUeCEJlC3y6t5pEwRjbpjtAjlvPAubcpKg7";
+const PAYPAL_CLIENT_ID = 
+const PAYPAL_CLIENT_SECRET = 
 const client = new Client({
   clientCredentialsAuthCredentials: {
     oAuthClientId: PAYPAL_CLIENT_ID,
